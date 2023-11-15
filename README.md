@@ -69,7 +69,7 @@ Workarounds for this issue include:
     # Clear all Egress Matrix Cell Configurations
     #
 
-    - name: Clear All Egress Policy Cells
-    cisco.ise.egress_matrix_cell_clear_all:
-      <<: *ise_login
+      - name: Clear All Egress Policy Cells
+        cisco.ise.egress_matrix_cell_clear_all:
+          <<: *ise_login
     ```  

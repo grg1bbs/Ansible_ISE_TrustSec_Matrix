@@ -1,0 +1,96 @@
+- name: Create ISE Egress Matrix
+  hosts: ise_servers
+  vars_files:
+    - credentials.yaml
+  vars:
+    ise_login: &ise_login
+      ise_hostname: "{{ ise_hostname }}"
+      ise_username: "{{ ise_username }}"
+      ise_password: "{{ ise_password }}"
+      ise_verify: "{{ ise_verify }}"
+      ise_debug: false
+  gather_facts: no
+
+  tasks:
+
+#
+# Get Security Group and SGACL IDs
+#
+
+  - name: Get default SGT ID - Employees
+    cisco.ise.sgt_info:
+      <<: *ise_login
+      filter:
+        - name.EQ.Employees
+      filterType: AND
+    register: sgt_employees
+
+  - name: Get default SGT ID - Developers
+    cisco.ise.sgt_info:
+      <<: *ise_login
+      filter:
+        - name.EQ.Developers
+      filterType: AND
+    register: sgt_developers
+
+#
+# Create New SGTs (using automatic numbering)
+# Create New SGACLs
+#
+
+  - name: Create SGT - Shared_Services
+    cisco.ise.sgt:
+      <<: *ise_login
+      state: present
+      name: "Shared_Services"
+      value: -1
+    register: sgt_shared_services
+
+  - name: Create SGACL - DENY_IP_ANY
+    cisco.ise.sg_acl:
+      <<: *ise_login
+      state: present
+      name: "DENY_IP_ANY"
+      aclcontent: "deny ip any any"
+      description: "Deny IP Any"
+      ipVersion: "IPV4"
+    register: sgacl_deny_ip_any
+
+  - name: Create SGACL - PERMIT_IP_ANY
+    cisco.ise.sg_acl:
+      <<: *ise_login
+      state: present
+      name: "PERMIT_IP_ANY"
+      aclcontent: "permit ip any any"
+      description: "Permit IP Any"
+      ipVersion: "IPV4"
+    register: sgacl_permit_ip_any
+
+#
+# Create Egress Matrix Cell Configurations
+#
+
+  - name: Create Egress Cell - Employees to Developers
+    cisco.ise.egress_matrix_cell:
+      <<: *ise_login
+      state: present
+      description: "Deny Emp to Dev"
+      sourceSgtId: "{{ sgt_employees.ise_response[0].id }}"
+      destinationSgtId: "{{ sgt_developers.ise_response[0].id }}"
+      matrixCellStatus: "ENABLED"
+      name: "EMP-DEV"
+      sgacls:
+      - "{{ sgacl_deny_ip_any.ise_response.id }}"
+
+  - name: Create Egress Cell - Employees to Shared_Services
+    cisco.ise.egress_matrix_cell:
+      <<: *ise_login
+      state: present
+      description: "Permit Emp to Shared Svc"
+      sourceSgtId: "{{ sgt_employees.ise_response[0].id }}"
+      destinationSgtId: "{{ sgt_shared_services.ise_response.id }}"
+      matrixCellStatus: "ENABLED"
+      name: "EMP-SHARED"
+      sgacls:
+      - "{{ sgacl_permit_ip_any.ise_response.id }}"
+

@@ -54,3 +54,22 @@ See [Ansible Modules for Cisco ISE](https://github.com/CiscoISE/ansible-ise) for
     ```bash
     ansible-playbook -i hosts cts-matrix.yaml
     ```
+
+## Notes
+At this time, running the playbook subseqent times will result in a 400 error on the plays that create the Egress Policy Cell configurations. [Issue #108](https://github.com/CiscoISE/ansible-ise/issues/108) has been submitted to request a fix for this error.
+
+Workarounds for this issue include:
+
+ 1. Delete the Egress Policy Cell configurations from the ISE GUI prior to running the playbook
+
+ 2. Insert the following play above the Egress Policy Cell plays to clear all cells
+
+    ```bash
+    #
+    # Clear all Egress Matrix Cell Configurations
+    #
+
+    - name: Clear All Egress Policy Cells
+    cisco.ise.egress_matrix_cell_clear_all:
+      <<: *ise_login
+    ```  
